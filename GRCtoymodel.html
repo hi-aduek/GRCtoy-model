@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GCR-AI Risk Sensitivity Model</title>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: #12151e;
+      --border: #1e2433;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --blue: #3b82f6;
+      --green: #4ade80;
+      --amber: #f59e0b;
+      --orange: #ea580c;
+      --rose: #f43f5e;
+      --purple: #8b5cf6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 28px 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+
+    /* Bar Chart Section */
+    .chart-box {
+      margin-bottom: 32px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 9px;
+      height: 30px;
+    }
+
+    .bar-label {
+      width: 220px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      text-align: right;
+      padding-right: 18px;
+      flex-shrink: 0;
+      font-weight: 500;
+    }
+
+    .bar-track {
+      flex-grow: 1;
+      height: 100%;
+      position: relative;
+      border-left: 1px solid #334155;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 0 4px 4px 0;
+      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+    }
+
+    .bar-val {
+      margin-left: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .chart-axis {
+      margin-left: 220px;
+      border-top: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      padding-top: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .axis-title {
+      text-align: right;
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    /* Table Section */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #161b26;
+    }
+
+    tr.highlight {
+      background: rgba(37, 99, 235, 0.22);
+    }
+
+    .badge-misalignment { color: #60a5fa; }
+    .badge-misuse { color: #86efac; }
+    .badge-common { color: #cbd5e1; }
+    .badge-threshold { color: #fed7aa; }
+
+    /* Summary Metric Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      margin-bottom: 26px;
+      text-align: center;
+      gap: 6px;
+    }
+
+    .summary-card {
+      border-right: 1px solid var(--border);
+      padding: 0 6px;
+    }
+    .summary-card:last-child { border-right: none; }
+
+    .summary-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .summary-val {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    /* Parameter Controls */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 36px;
+      row-gap: 14px;
+    }
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .control-label {
+      font-size: 13px;
+      color: #e2e8f0;
+    }
+
+    .control-inputs {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type=range] {
+      width: 90px;
+      accent-color: #64748b;
+      cursor: pointer;
+    }
+
+    input[type=number] {
+      width: 68px;
+      background: #181d28;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      color: #fff;
+      padding: 5px 6px;
+      font-size: 12.5px;
+      text-align: center;
+      font-family: inherit;
+    }
+
+    input[type=number]:focus {
+      outline: 1px solid var(--blue);
+      border-color: var(--blue);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #272f3d; transition: .2s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .2s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--blue); }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>GCR-AI Risk Sensitivity Model</h1>
+
+  <!-- Dynamic Risk Decomposition Bar Chart -->
+  <div class="chart-box">
+    <div class="bar-row">
+      <div class="bar-label">Misalignment Pathway</div>
+      <div class="bar-track">
+        <div id="barMisalign" class="bar-fill" style="background-color: var(--blue); width: 17%;">
+          <span id="valMisalign" class="bar-val">3.41%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">Misuse Pathway</div>
+      <div class="bar-track">
+        <div id="barMisuse" class="bar-fill" style="background-color: var(--green); width: 13%;">
+          <span id="valMisuse" class="bar-val">2.60%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">P(Catastrophe) [Sub-GCR / Systemic]</div>
+      <div class="bar-track">
+        <div id="barCatastrophe" class="bar-fill" style="background-color: var(--amber); width: 29.6%;">
+          <span id="valCatastrophe" class="bar-val">5.92%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">P(GCR) [&ge;10M Deaths / &ge;$10T]</div>
+      <div class="bar-track">
+        <div id="barGcr" class="bar-fill" style="background-color: var(--orange); width: 17.8%;">
+          <span id="valGcr" class="bar-val">3.55%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-label">P(doom) [Terminal Extinction]</div>
+      <div class="bar-track">
+        <div id="barDoom" class="bar-fill" style="background-color: var(--rose); width: 6.2%;">
+          <span id="valDoom" class="bar-val">1.24%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-axis">
+      <span>0%</span><span>2%</span><span>4%</span><span>6%</span><span>8%</span><span>10%</span><span>12%</span><span>14%</span><span>16%</span><span>18%</span><span>20%</span>
+    </div>
+    <div class="axis-title">Probability &rarr;</div>
+  </div>
+
+  <!-- Sensitivity Ranking Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Pathway</th>
+        <th>Value</th>
+        <th>Impact on GCR (-1% step)</th>
+      </tr>
+    </thead>
+    <tbody id="sensitivityBody"></tbody>
+  </table>
+
+  <!-- Five Metric Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-title">Misalign Path</div>
+      <div class="summary-val" id="cardMisalign" style="color: var(--blue);">3.41%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">Misuse Path</div>
+      <div class="summary-val" id="cardMisuse" style="color: var(--green);">2.60%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">P(Catastrophe)</div>
+      <div class="summary-val" id="cardCatastrophe" style="color: var(--amber);">5.92%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">P(GCR)</div>
+      <div class="summary-val" id="cardGcr" style="color: var(--orange);">3.55%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">P(doom)</div>
+      <div class="summary-val" id="cardDoom" style="color: var(--rose);">1.24%</div>
+    </div>
+  </div>
+
+  <!-- Parameter Controls -->
+  <div class="controls-grid">
+    <div class="control-item">
+      <span class="control-label">P(Capabilities)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_cap" min="0" max="1" step="0.01" value="0.65" />
+        <input type="number" id="num_cap" min="0" max="1" step="0.01" value="0.65" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Agency)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_age" min="0" max="1" step="0.01" value="0.70" />
+        <input type="number" id="num_age" min="0" max="1" step="0.01" value="0.70" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Misalignment)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_mis" min="0" max="1" step="0.01" value="0.25" />
+        <input type="number" id="num_mis" min="0" max="1" step="0.01" value="0.25" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Def Failure)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_fail" min="0" max="1" step="0.01" value="0.30" />
+        <input type="number" id="num_fail" min="0" max="1" step="0.01" value="0.30" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Dual-Use)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_dual" min="0" max="1" step="0.01" value="0.50" />
+        <input type="number" id="num_dual" min="0" max="1" step="0.01" value="0.50" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Proliferation)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_prolif" min="0" max="1" step="0.01" value="0.40" />
+        <input type="number" id="num_prolif" min="0" max="1" step="0.01" value="0.40" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(Execution)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_exec" min="0" max="1" step="0.01" value="0.20" />
+        <input type="number" id="num_exec" min="0" max="1" step="0.01" value="0.20" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(GCR | Catastrophe)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_gcr_cond" min="0" max="1" step="0.01" value="0.60" />
+        <input type="number" id="num_gcr_cond" min="0" max="1" step="0.01" value="0.60" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">P(doom | GCR)</span>
+      <div class="control-inputs">
+        <input type="range" id="rng_doom_cond" min="0" max="1" step="0.01" value="0.35" />
+        <input type="number" id="num_doom_cond" min="0" max="1" step="0.01" value="0.35" />
+      </div>
+    </div>
+
+    <div class="control-item">
+      <span class="control-label">View Joint Prob</span>
+      <label class="switch">
+        <input type="checkbox" id="jointToggle" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = [
+    { id: 'cap', name: 'Capabilities by 2035', pathway: 'Common Factor', pathKey: 'common' },
+    { id: 'age', name: 'Autonomous Agency', pathway: 'Misalignment', pathKey: 'misalign' },
+    { id: 'mis', name: 'Inner Misalignment', pathway: 'Misalignment', pathKey: 'misalign' },
+    { id: 'fail', name: 'Containment Failure', pathway: 'Misalignment', pathKey: 'misalign' },
+    { id: 'dual', name: 'Dual-Use Uplift', pathway: 'Misuse', pathKey: 'misuse' },
+    { id: 'prolif', name: 'Proliferation/Exfil', pathway: 'Misuse', pathKey: 'misuse' },
+    { id: 'exec', name: 'Physical Execution', pathway: 'Misuse', pathKey: 'misuse' },
+    { id: 'gcr_cond', name: 'GCR Escalation Factor', pathway: 'Severity Scaling', pathKey: 'threshold' },
+    { id: 'doom_cond', name: 'Terminal Doom Conversion', pathway: 'Severity Scaling', pathKey: 'threshold' }
+  ];
+
+  function getVals() {
+    return {
+      cap: parseFloat(document.getElementById('num_cap').value) || 0,
+      age: parseFloat(document.getElementById('num_age').value) || 0,
+      mis: parseFloat(document.getElementById('num_mis').value) || 0,
+      fail: parseFloat(document.getElementById('num_fail').value) || 0,
+      dual: parseFloat(document.getElementById('num_dual').value) || 0,
+      prolif: parseFloat(document.getElementById('num_prolif').value) || 0,
+      exec: parseFloat(document.getElementById('num_exec').value) || 0,
+      gcr_cond: parseFloat(document.getElementById('num_gcr_cond').value) || 0,
+      doom_cond: parseFloat(document.getElementById('num_doom_cond').value) || 0,
+      joint: document.getElementById('jointToggle').checked
+    };
+  }
+
+  function computeChains(v) {
+    // Fundamental Misalignment & Misuse Pathways
+    const pMisalign = v.cap * v.age * v.mis * v.fail;
+    const pMisuse = v.cap * v.dual * v.prolif * v.exec;
+
+    // 1. P(Catastrophe): Broadest tier (Severe Systemic Shock / Grid / Cyber / Bio-leak)
+    const pCatastrophe = v.joint
+      ? (pMisalign + pMisuse - (pMisalign * pMisuse))
+      : (pMisalign + pMisuse);
+
+    // 2. P(GCR): Bostrom-Ćirković threshold (≥10M Fatalities or ≥$10T global damage)
+    const pGcr = pCatastrophe * v.gcr_cond;
+
+    // 3. P(doom): Terminal biological extinction or permanent loss of human potential
+    const pDoom = pGcr * v.doom_cond;
+
+    return { pMisalign, pMisuse, pCatastrophe, pGcr, pDoom };
+  }
+
+  function calculate() {
+    const v = getVals();
+    const base = computeChains(v);
+
+    // Update Summary Header Cards
+    document.getElementById('cardMisalign').innerText = (base.pMisalign * 100).toFixed(2) + '%';
+    document.getElementById('cardMisuse').innerText = (base.pMisuse * 100).toFixed(2) + '%';
+    document.getElementById('cardCatastrophe').innerText = (base.pCatastrophe * 100).toFixed(2) + '%';
+    document.getElementById('cardGcr').innerText = (base.pGcr * 100).toFixed(2) + '%';
+    document.getElementById('cardDoom').innerText = (base.pDoom * 100).toFixed(2) + '%';
+
+    // Calibrate Bar Charts against a 20% axis ceiling
+    const maxAxis = 0.20;
+    const wMisalign = Math.min(100, (base.pMisalign / maxAxis) * 100);
+    const wMisuse = Math.min(100, (base.pMisuse / maxAxis) * 100);
+    const wCatastrophe = Math.min(100, (base.pCatastrophe / maxAxis) * 100);
+    const wGcr = Math.min(100, (base.pGcr / maxAxis) * 100);
+    const wDoom = Math.min(100, (base.pDoom / maxAxis) * 100);
+
+    document.getElementById('barMisalign').style.width = wMisalign + '%';
+    document.getElementById('valMisalign').innerText = (base.pMisalign * 100).toFixed(2) + '%';
+
+    document.getElementById('barMisuse').style.width = wMisuse + '%';
+    document.getElementById('valMisuse').innerText = (base.pMisuse * 100).toFixed(2) + '%';
+
+    document.getElementById('barCatastrophe').style.width = wCatastrophe + '%';
+    document.getElementById('valCatastrophe').innerText = (base.pCatastrophe * 100).toFixed(2) + '%';
+
+    document.getElementById('barGcr').style.width = wGcr + '%';
+    document.getElementById('valGcr').innerText = (base.pGcr * 100).toFixed(2) + '%';
+
+    document.getElementById('barDoom').style.width = wDoom + '%';
+    document.getElementById('valDoom').innerText = (base.pDoom * 100).toFixed(2) + '%';
+
+    // Compute sensitivity (-1% perturbation on GCR)
+    const delta = 0.01;
+    const sensitivities = params.map(p => {
+      const vPerturbed = { ...v };
+      vPerturbed[p.id] = Math.max(0, vPerturbed[p.id] - delta);
+      const perturbed = computeChains(vPerturbed);
+      const impact = base.pGcr - perturbed.pGcr;
+      return {
+        ...p,
+        val: v[p.id],
+        impact: impact
+      };
+    });
+
+    sensitivities.sort((a, b) => b.impact - a.impact);
+
+    // Render Table
+    const tbody = document.getElementById('sensitivityBody');
+    tbody.innerHTML = '';
+    sensitivities.forEach((s, idx) => {
+      const tr = document.createElement('tr');
+      if (idx === 0) tr.className = 'highlight';
+
+      let pathwayClass = 'badge-common';
+      if (s.pathKey === 'misalign') pathwayClass = 'badge-misalignment';
+      if (s.pathKey === 'misuse') pathwayClass = 'badge-misuse';
+      if (s.pathKey === 'threshold') pathwayClass = 'badge-threshold';
+
+      tr.innerHTML = `
+        <td style="font-weight: 500;">${s.name}</td>
+        <td class="${pathwayClass}">${s.pathway}</td>
+        <td>${Math.round(s.val * 100)}%</td>
+        <td style="font-weight: 600;">${(s.impact * 100).toFixed(3)}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Bind bi-directional input sync
+  params.forEach(p => {
+    const rng = document.getElementById(`rng_${p.id}`);
+    const num = document.getElementById(`num_${p.id}`);
+
+    rng.addEventListener('input', () => {
+      num.value = rng.value;
+      calculate();
+    });
+    num.addEventListener('input', () => {
+      rng.value = num.value;
+      calculate();
+    });
+  });
+
+  document.getElementById('jointToggle').addEventListener('change', calculate);
+
+  calculate();
+</script>
+
+</body>
+</html>
